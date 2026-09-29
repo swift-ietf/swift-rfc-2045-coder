@@ -1,12 +1,8 @@
 import ASCII
-import ASCII_Serializer
-import Binary_Serializable
+import Binary
 import Byte
-import Byte_Standard_Library_Integration
 import Coder
-import Coder_Standard_Library_Integration
-import Cursor_Standard_Library_Integration
-import Parseable_ASCII
+import Cursor
 import Parser
 import RFC_2045
 import RFC_2045_Coder
@@ -16,14 +12,14 @@ import Testing
 
 @Suite
 struct `RFC 2045 Coder Tests` {
-    @Suite struct `Content Type Tests` {}
-    @Suite struct `Content Transfer Encoding Tests` {}
-    @Suite struct `Charset Tests` {}
-    @Suite struct `Parameter Name Tests` {}
-    @Suite struct `Header Tests` {}
+    @Suite struct `Content type on the wire` {}
+    @Suite struct `Content transfer encoding on the wire` {}
+    @Suite struct `Charset on the wire` {}
+    @Suite struct `Parameter name on the wire` {}
+    @Suite struct `MIME headers` {}
 }
 
-extension `RFC 2045 Coder Tests`.`Content Type Tests` {
+extension `RFC 2045 Coder Tests`.`Content type on the wire` {
 
     @Test
     func `reads a media type and stops at the first foreign byte`() throws {
@@ -50,11 +46,19 @@ extension `RFC 2045 Coder Tests`.`Content Type Tests` {
     }
 
     @Test
-    func `reads a parameter list and lowercases the parameter names`() throws {
+    func `reads a parameter list whose names match case-insensitively`() throws {
         var input: ArraySlice<Byte> = "multipart/mixed; BOUNDARY=abc; Charset=UTF-8"
         let contentType = try RFC_2045.ContentType.coder.parse(&input)
         #expect(contentType.boundary == "abc")
         #expect(contentType.parameters[.charset] == "UTF-8")
+    }
+
+    @Test
+    func `leaves a malformed parameter unread`() throws {
+        var input: ArraySlice<Byte> = "text/plain; charset"
+        let contentType = try RFC_2045.ContentType.coder.parse(&input)
+        #expect(contentType == RFC_2045.ContentType.textPlain)
+        #expect(String(decoding: input, as: UTF8.self) == "; charset")
     }
 
     @Test
@@ -88,6 +92,17 @@ extension `RFC 2045 Coder Tests`.`Content Type Tests` {
     }
 
     @Test
+    func `escapes quotes and backslashes inside a quoted parameter value`() throws {
+        let contentType = try RFC_2045.ContentType(
+            type: "text",
+            subtype: "plain",
+            parameters: [.name: #"a"b\c"#]
+        )
+        #expect(contentType.description == #"text/plain; name="a\"b\\c""#)
+        #expect(try RFC_2045.ContentType(contentType.description) == contentType)
+    }
+
+    @Test
     func `encodes through the codable seam and reads the bytes back`() throws {
         let contentType = RFC_2045.ContentType.textPlainUTF8
         let bytes: [Byte] = try contentType.encoded()
@@ -97,16 +112,10 @@ extension `RFC 2045 Coder Tests`.`Content Type Tests` {
 
     @Test
     func `a media type round trips through its text form`() throws {
-        #expect(try RFC_2045.ContentType("text/plain; charset=UTF-8").description
-            == "text/plain; charset=UTF-8")
-        #expect(try RFC_2045.ContentType("TEXT/PLAIN").type == "text")
-        #expect(try RFC_2045.ContentType("  text/plain  ").subtype == "plain")
-    }
-
-    @Test
-    func `a media type reads from ASCII bytes`() throws {
-        let contentType = try RFC_2045.ContentType(ascii: [Byte](utf8: "image/png"))
-        #expect(contentType == RFC_2045.ContentType.imagePNG)
+        let text = "text/plain; charset=UTF-8"
+        #expect(try RFC_2045.ContentType(text).description == text)
+        #expect(RFC_2045.ContentType(rawValue: text)?.rawValue == text)
+        #expect(RFC_2045.ContentType(rawValue: "text") == nil)
     }
 
     @Test
@@ -115,31 +124,23 @@ extension `RFC 2045 Coder Tests`.`Content Type Tests` {
         #expect(contentType.headerValue == "text/html; charset=UTF-8")
         #expect(contentType.rawValue == "text/html; charset=UTF-8")
         #expect([Byte](contentType) == [Byte](utf8: "text/html; charset=UTF-8"))
+        #expect(contentType.serialized == [Byte](utf8: "text/html; charset=UTF-8"))
     }
 
     @Test
-    func `an empty field value is refused`() {
-        #expect(throws: RFC_2045.ContentType.Error.empty) {
-            try RFC_2045.ContentType("")
-        }
+    func `a media type writes itself into an ASCII buffer`() {
+        var buffer: [ASCII.Code] = []
+        RFC_2045.ContentType.serialize(.imageSVG, into: &buffer)
+        #expect(String(decoding: buffer.lazy.map(\.underlying), as: UTF8.self) == "image/svg+xml")
     }
 
     @Test
-    func `a field value without a solidus is refused`() {
-        #expect(throws: RFC_2045.ContentType.Error.missingSeparator("text")) {
-            try RFC_2045.ContentType("text")
-        }
-    }
-
-    @Test
-    func `a field value outside ASCII is refused`() {
-        #expect(throws: RFC_2045.ContentType.Error.nonASCII("téxt/plain")) {
-            try RFC_2045.ContentType("téxt/plain")
-        }
+    func `the Content-Type field name serializes to bytes`() {
+        #expect([Byte](RFC_2045.ContentType.self) == [Byte](utf8: "Content-Type"))
     }
 }
 
-extension `RFC 2045 Coder Tests`.`Content Transfer Encoding Tests` {
+extension `RFC 2045 Coder Tests`.`Content transfer encoding on the wire` {
 
     @Test
     func `reads a mechanism name and stops at the first foreign byte`() throws {
@@ -184,13 +185,24 @@ extension `RFC 2045 Coder Tests`.`Content Transfer Encoding Tests` {
     func `a mechanism serializes to bytes`() {
         #expect(RFC_2045.ContentTransferEncoding.sevenBit.serialized == [Byte](utf8: "7bit"))
         #expect([Byte](RFC_2045.ContentTransferEncoding.eightBit) == [Byte](utf8: "8bit"))
+        #expect(
+            [Byte](RFC_2045.ContentTransferEncoding.self)
+                == [Byte](utf8: "Content-Transfer-Encoding")
+        )
+    }
+
+    @Test
+    func `a mechanism round trips through the codable seam`() throws {
+        let bytes: [Byte] = try RFC_2045.ContentTransferEncoding.base64.encoded()
+        var input = bytes[...]
+        #expect(try RFC_2045.ContentTransferEncoding(decoding: &input) == .base64)
     }
 }
 
-extension `RFC 2045 Coder Tests`.`Charset Tests` {
+extension `RFC 2045 Coder Tests`.`Charset on the wire` {
 
     @Test
-    func `reads a charset identifier and uppercases it`() throws {
+    func `reads a charset identifier and stops at the first foreign byte`() throws {
         var input: ArraySlice<Byte> = "utf-8; rest"
         #expect(try RFC_2045.Charset.coder.parse(&input) == RFC_2045.Charset.utf8)
         #expect(input.first == ASCII.Code.semicolon.byte)
@@ -210,6 +222,13 @@ extension `RFC 2045 Coder Tests`.`Charset Tests` {
     }
 
     @Test
+    func `a charset round trips through the codable seam`() throws {
+        let bytes: [Byte] = try RFC_2045.Charset.windows1252.encoded()
+        var input = bytes[...]
+        #expect(try RFC_2045.Charset(decoding: &input) == RFC_2045.Charset.windows1252)
+    }
+
+    @Test
     func `restores the cursor on an empty charset identifier`() {
         var input: ArraySlice<Byte> = "; charset=UTF-8"
         #expect(throws: RFC_2045.Charset.Error.empty) {
@@ -219,7 +238,7 @@ extension `RFC 2045 Coder Tests`.`Charset Tests` {
     }
 }
 
-extension `RFC 2045 Coder Tests`.`Parameter Name Tests` {
+extension `RFC 2045 Coder Tests`.`Parameter name on the wire` {
 
     @Test
     func `reads a parameter name and stops at the equals sign`() throws {
@@ -238,10 +257,18 @@ extension `RFC 2045 Coder Tests`.`Parameter Name Tests` {
     @Test
     func `a parameter name serializes to bytes`() {
         #expect(RFC_2045.Parameter.Name.name.serialized == [Byte](utf8: "name"))
+        #expect([Byte](RFC_2045.Parameter.Name.boundary) == [Byte](utf8: "boundary"))
+    }
+
+    @Test
+    func `a parameter name round trips through the codable seam`() throws {
+        let bytes: [Byte] = try RFC_2045.Parameter.Name.charset.encoded()
+        var input = bytes[...]
+        #expect(try RFC_2045.Parameter.Name(decoding: &input) == RFC_2045.Parameter.Name.charset)
     }
 }
 
-extension `RFC 2045 Coder Tests`.`Header Tests` {
+extension `RFC 2045 Coder Tests`.`MIME headers` {
 
     @Test
     func `a content type becomes an RFC 5322 header`() throws {

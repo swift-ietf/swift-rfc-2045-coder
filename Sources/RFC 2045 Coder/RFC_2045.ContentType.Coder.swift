@@ -1,10 +1,10 @@
 public import Byte
 public import Coder
 public import Cursor
-public import Cursor_Standard_Library_Integration
+public import Cursor
 public import RFC_2045
 import ASCII
-import Byte_Standard_Library_Integration
+import Byte
 import Parser
 import Serializer
 
@@ -34,7 +34,7 @@ extension RFC_2045.ContentType {
                 throw .emptyType("")
             }
 
-            guard Scan.take(&input, ASCII.Code.solidus.underlying) else {
+            guard Scan.take(&input, ASCII.Code.solidus) else {
                 input.seek(to: start)
                 throw .missingSeparator(String(decoding: typeBytes, as: UTF8.self))
             }
@@ -54,7 +54,7 @@ extension RFC_2045.ContentType {
 
                 Scan.skipWhitespace(&input)
 
-                guard Scan.take(&input, ASCII.Code.semicolon.underlying) else {
+                guard Scan.take(&input, ASCII.Code.semicolon) else {
                     input.seek(to: mark)
                     break fields
                 }
@@ -65,17 +65,13 @@ extension RFC_2045.ContentType {
 
                 guard
                     !nameBytes.isEmpty,
-                    Scan.take(&input, ASCII.Code.equalsSign.underlying)
+                    Scan.take(&input, ASCII.Code.equalsSign)
                 else {
                     input.seek(to: mark)
                     break fields
                 }
 
-                guard
-                    let name = RFC_2045.Parameter.Name(
-                        rawValue: String(decoding: nameBytes, as: UTF8.self).lowercased()
-                    )
-                else {
+                guard let name = try? RFC_2045.Parameter.Name(ascii: nameBytes) else {
                     input.seek(to: mark)
                     break fields
                 }
@@ -102,7 +98,7 @@ extension RFC_2045.ContentType {
 
         static func value(_ input: inout Input) -> String? {
 
-            guard Scan.take(&input, ASCII.Code.quotationMark.underlying) else {
+            guard Scan.take(&input, ASCII.Code.quotationMark) else {
                 let bytes = Scan.run(&input, while: RFC_2045.Grammar.isTokenCharacter)
                 guard !bytes.isEmpty else { return nil }
                 return String(decoding: bytes, as: UTF8.self)
@@ -116,9 +112,9 @@ extension RFC_2045.ContentType {
                 if escaped {
                     bytes.append(byte)
                     escaped = false
-                } else if byte.bitPattern == ASCII.Code.reverseSolidus.underlying {
+                } else if byte == ASCII.Code.reverseSolidus.byte {
                     escaped = true
-                } else if byte.bitPattern == ASCII.Code.quotationMark.underlying {
+                } else if byte == ASCII.Code.quotationMark.byte {
                     return String(decoding: bytes, as: UTF8.self)
                 } else {
                     bytes.append(byte)
