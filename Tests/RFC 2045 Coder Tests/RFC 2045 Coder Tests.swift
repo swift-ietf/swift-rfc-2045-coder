@@ -105,9 +105,10 @@ extension `RFC 2045 Coder Tests`.`Content type on the wire` {
     @Test
     func `encodes through the codable seam and reads the bytes back`() throws {
         let contentType = RFC_2045.ContentType.textPlainUTF8
-        let bytes: [Byte] = try contentType.encoded()
+        var bytes: [Byte] = []
+        try RFC_2045.ContentType.coder.serialize(contentType, into: &bytes)
         var input = bytes[...]
-        #expect(try RFC_2045.ContentType(decoding: &input) == contentType)
+        #expect(try RFC_2045.ContentType.coder.parse(&input) == contentType)
     }
 
     @Test
@@ -193,9 +194,10 @@ extension `RFC 2045 Coder Tests`.`Content transfer encoding on the wire` {
 
     @Test
     func `a mechanism round trips through the codable seam`() throws {
-        let bytes: [Byte] = try RFC_2045.ContentTransferEncoding.base64.encoded()
+        var bytes: [Byte] = []
+        try RFC_2045.ContentTransferEncoding.coder.serialize(RFC_2045.ContentTransferEncoding.base64, into: &bytes)
         var input = bytes[...]
-        #expect(try RFC_2045.ContentTransferEncoding(decoding: &input) == .base64)
+        #expect(try RFC_2045.ContentTransferEncoding.coder.parse(&input) == .base64)
     }
 }
 
@@ -223,9 +225,10 @@ extension `RFC 2045 Coder Tests`.`Charset on the wire` {
 
     @Test
     func `a charset round trips through the codable seam`() throws {
-        let bytes: [Byte] = try RFC_2045.Charset.windows1252.encoded()
+        var bytes: [Byte] = []
+        try RFC_2045.Charset.coder.serialize(RFC_2045.Charset.windows1252, into: &bytes)
         var input = bytes[...]
-        #expect(try RFC_2045.Charset(decoding: &input) == RFC_2045.Charset.windows1252)
+        #expect(try RFC_2045.Charset.coder.parse(&input) == RFC_2045.Charset.windows1252)
     }
 
     @Test
@@ -262,9 +265,10 @@ extension `RFC 2045 Coder Tests`.`Parameter name on the wire` {
 
     @Test
     func `a parameter name round trips through the codable seam`() throws {
-        let bytes: [Byte] = try RFC_2045.Parameter.Name.charset.encoded()
+        var bytes: [Byte] = []
+        try RFC_2045.Parameter.Name.coder.serialize(RFC_2045.Parameter.Name.charset, into: &bytes)
         var input = bytes[...]
-        #expect(try RFC_2045.Parameter.Name(decoding: &input) == RFC_2045.Parameter.Name.charset)
+        #expect(try RFC_2045.Parameter.Name.coder.parse(&input) == RFC_2045.Parameter.Name.charset)
     }
 }
 

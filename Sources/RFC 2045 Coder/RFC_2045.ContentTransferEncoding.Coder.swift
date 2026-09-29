@@ -42,5 +42,3 @@ extension RFC_2045.ContentTransferEncoding {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 }
-
-extension RFC_2045.ContentTransferEncoding: Coder.Codable {}

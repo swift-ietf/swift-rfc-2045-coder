@@ -134,5 +134,3 @@ extension RFC_2045.ContentType {
 
     public static var coder: Coder<ArraySlice<Byte>, [Byte]> { .init() }
 }
-
-extension RFC_2045.ContentType: Coder.Codable {}
