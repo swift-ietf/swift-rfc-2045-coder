@@ -14,11 +14,6 @@ extension RFC_2045.ContentType {
         Input: Cursor.`Protocol`<Byte, Never>,
         Buffer: RangeReplaceableCollection<Byte>
     >: Coding {
-        public var body: Never {
-            borrowing get {
-                return fatalError("\(Self.self) is a leaf coder: implement parse and serialize directly")
-            }
-        }
 
 
         public typealias Output = RFC_2045.ContentType
