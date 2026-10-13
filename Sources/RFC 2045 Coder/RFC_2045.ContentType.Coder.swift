@@ -4,7 +4,6 @@ public import Cursor
 public import Cursor
 public import RFC_2045
 import ASCII
-import Byte
 import Parser
 import Serializer
 

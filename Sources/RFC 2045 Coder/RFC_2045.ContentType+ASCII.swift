@@ -1,7 +1,6 @@
 public import ASCII
 public import Binary
 public import Byte
-import Byte
 public import RFC_2045
 
 extension RFC_2045.ContentType: @retroactive ASCII.Parseable {}
@@ -55,7 +54,7 @@ extension RFC_2045.ContentType: @retroactive ASCII.Serializable,
     }
 }
 
-extension RFC_2045.ContentType: @retroactive Swift.RawRepresentable {
+extension RFC_2045.ContentType: @retroactive Swift::RawRepresentable {
 
     public var rawValue: String {
         String(decoding: RFC_2045.ContentType.canonical(self), as: UTF8.self)
