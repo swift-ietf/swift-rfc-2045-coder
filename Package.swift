@@ -34,9 +34,7 @@ let package = Package(
             dependencies: [
                 .product(name: "ASCII", package: "swift-ascii"),
                 .product(name: "Byte", package: "swift-byte"),
-                .product(name: "Byte", package: "swift-byte"),
                 .product(name: "Coder", package: "swift-coder"),
-                .product(name: "Cursor", package: "swift-cursor"),
                 .product(name: "Cursor", package: "swift-cursor"),
                 .product(name: "Parser", package: "swift-parser"),
                 .product(name: "RFC 2045", package: "swift-rfc-2045"),
@@ -50,7 +48,6 @@ let package = Package(
             dependencies: [
                 .target(name: "RFC 2045 Coder"),
                 .product(name: "ASCII", package: "swift-ascii"),
-                .product(name: "Byte", package: "swift-byte"),
                 .product(name: "Byte", package: "swift-byte"),
                 .product(name: "Coder", package: "swift-coder"),
                 .product(
